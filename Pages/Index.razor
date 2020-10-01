@@ -1,4 +1,8 @@
 @page "/"
+@using System.IO;
+@using Microsoft.AspNetCore.Hosting;
+
+@inject IWebHostEnvironment _env;
 
 <h1>.NET 5.0 Blazor Uploads</h1>
 <p>Investigating the <b>InputFile</b> component</p>
@@ -15,26 +19,86 @@
             </ul>
         </div>
     }
+    @if(urls.Count > 0)
+    {
+        foreach (var url in urls)
+        {
+            <br />
+            <a href="@url" download>@url</a>
+        }
+    }
 </div>
 
 @code {
     IReadOnlyList<IBrowserFile> files;
-    IBrowserFile file;
+    List<string> urls = new List<string>();
 
     async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
-        if (e.FileCount > 1)
+        try
         {
-            files = e.GetMultipleFiles();
-            file = null;
+            if (e.FileCount > 1)
+            {
+                files = e.GetMultipleFiles();
+                urls.Clear();
+                urls.AddRange(await SaveFiles(files));
+            }
+            else
+            {
+                files = null;
+
+                var url = await SaveFile(e.File);
+                urls.Clear();
+                urls.Add(url);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            file = e.File;
-            files = null;
+            System.Diagnostics.Debug.WriteLine(ex.Message);
+            throw;
+        }
+    }
+
+    private async Task<List<string>> SaveFiles(IReadOnlyList<IBrowserFile> files)
+    {
+        var list = new List<string>();
+        var guid = Guid.NewGuid().ToString();
+        foreach (var file in files)
+        {
+            var url = await SaveFile(file, guid);
+            list.Add(url);
+        }
+        return list;
+    }
+
+    private async Task<string> SaveFile(IBrowserFile file, string guid = null)
+    {
+        if (guid == null)
+        {
+            guid = Guid.NewGuid().ToString();
         }
 
-        //todo: save to the server side
+        var relativePath = Path.Combine("uploads", guid);
+        var dirToSave = Path.Combine(_env.WebRootPath, relativePath);
+        var di = new DirectoryInfo(dirToSave);
+        if (!di.Exists)
+        {
+            di.Create();
+        }
+
+        var filePath = Path.Combine(dirToSave, file.Name);
+        using (var stream = file.OpenReadStream(10485760))
+        {
+            using(var mstream = new MemoryStream())
+            {
+                await stream.CopyToAsync(mstream);
+                await File.WriteAllBytesAsync(filePath, mstream.ToArray());
+            }
+        }
+
+        var url = Path.Combine(relativePath, file.Name).Replace("\\", "/");
+        return url;
+
     }
 }
 
