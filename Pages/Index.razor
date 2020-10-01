@@ -4,13 +4,36 @@
 <p>Investigating the <b>InputFile</b> component</p>
 <div>
     <InputFile OnChange="OnInputFileChange" multiple />
+    @if (files != null && files.Count > 1)
+    {
+        <div>
+            <ul>
+                @foreach (var file in files)
+                {
+                    <li>@file.Name</li>
+                }
+            </ul>
+        </div>
+    }
 </div>
 
 @code {
-    
+    IReadOnlyList<IBrowserFile> files;
+    IBrowserFile file;
+
     async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
-        //todo: display file names
+        if (e.FileCount > 1)
+        {
+            files = e.GetMultipleFiles();
+            file = null;
+        }
+        else
+        {
+            file = e.File;
+            files = null;
+        }
+
         //todo: save to the server side
     }
 }
