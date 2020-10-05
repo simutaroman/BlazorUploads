@@ -4,10 +4,23 @@
 
 @inject IWebHostEnvironment _env;
 
-<h1>.NET 5.0 Blazor Uploads</h1>
+<h1>.NET 5.0 Blazor InputFile Options</h1>
 <p>Investigating the <b>InputFile</b> component</p>
 <div>
-    <InputFile OnChange="OnInputFileChange" multiple />
+    <div class="inputArea">
+        <InputFile id="inputDefault"
+                   OnChange="OnInputFileChange"
+                   accept="image/png,image/gif,image/jpeg"/>
+    </div>
+    <div class="dropArea @dropClass">
+        Drag and drop your files here or click to open file loading dialogue...
+        <InputFile id="inputDrop"
+                   OnChange="OnInputFileChange"
+                   @ondragenter="HandleDragEnter"
+                   @ondragleave="HandleDragLeave"
+                   multiple />
+    </div>
+
     @if (files != null && files.Count > 1)
     {
         <div>
@@ -19,7 +32,7 @@
             </ul>
         </div>
     }
-    @if(urls.Count > 0)
+    @if (urls.Count > 0)
     {
         foreach (var url in urls)
         {
@@ -32,9 +45,22 @@
 @code {
     IReadOnlyList<IBrowserFile> files;
     List<string> urls = new List<string>();
+    string dropClass = string.Empty;
+    const int maxFileSize = 10485760;
+
+    private void HandleDragEnter()
+    {
+        dropClass = "dropAreaDrug";
+    }
+
+    private void HandleDragLeave()
+    {
+        dropClass = string.Empty;
+    }
 
     async Task OnInputFileChange(InputFileChangeEventArgs e)
     {
+        dropClass = string.Empty;
         try
         {
             if (e.FileCount > 1)
@@ -87,9 +113,9 @@
         }
 
         var filePath = Path.Combine(dirToSave, file.Name);
-        using (var stream = file.OpenReadStream(10485760))
+        using (var stream = file.OpenReadStream(maxFileSize))
         {
-            using(var mstream = new MemoryStream())
+            using (var mstream = new MemoryStream())
             {
                 await stream.CopyToAsync(mstream);
                 await File.WriteAllBytesAsync(filePath, mstream.ToArray());
@@ -98,7 +124,6 @@
 
         var url = Path.Combine(relativePath, file.Name).Replace("\\", "/");
         return url;
-
     }
 }
 
